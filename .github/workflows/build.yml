@@ -1,0 +1,39 @@
+name: Build XenoBattery
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Versions
+        run: xcodebuild -version && xcrun --sdk iphoneos --show-sdk-version
+
+      - name: Compilation simulateur (test rapide)
+        run: |
+          xcodebuild -project XenoBattery.xcodeproj -scheme XenoBattery \
+            -sdk iphonesimulator -configuration Debug \
+            -derivedDataPath build-sim CODE_SIGNING_ALLOWED=NO build
+
+      - name: Compilation iPhone (non signee)
+        run: |
+          xcodebuild -project XenoBattery.xcodeproj -scheme XenoBattery \
+            -sdk iphoneos -configuration Release \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build
+
+      - name: Emballer en .ipa
+        run: |
+          mkdir -p Payload
+          cp -R build/Build/Products/Release-iphoneos/XenoBattery.app Payload/
+          ls Payload/XenoBattery.app/PlugIns
+          zip -qr XenoBattery-unsigned.ipa Payload
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: XenoBattery-unsigned-ipa
+          path: XenoBattery-unsigned.ipa
